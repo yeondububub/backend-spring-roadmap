@@ -44,3 +44,64 @@
 > **유지보수**: 필드 추가/수정 시 SQL을 전부 수정할 필요 없이 엔티티 클래스만 수정.
 > **패러다임 불일치 해결**: 상속, 연관관계, 객체 그래프 탐색, 동일성 보장을 JPA가 처리.
 > **성능 최적화**: 1차 캐시와 동일성 보장, 쓰기 지연(Transactional Write-behind), 지연 로딩(Lazy Loading).
+
+## 2. JPA 시작 및 기초 애플리케이션 개발
+
+### 2.1 JPA 설정 (persistence.xml)
+
+JPA는 `META-INF/persistence.xml` 설정을 통해 데이터베이스 연결 정보와 방언(Dialect)을 설정함.
+
+```xml
+<persistence version="2.2">
+    <persistence-unit name="hello">
+        <properties>
+            <!-- 필수 속성 -->
+            <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
+            <property name="javax.persistence.jdbc.user" value="sa"/>
+            <property name="javax.persistence.jdbc.password" value=""/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/test"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+
+            <!-- 옵션 -->
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.hbm2ddl.auto" value="create"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+```
+
+### 2.2 EntityManagerFactory와 EntityManager
+
+- **EntityManagerFactory**: 애플리케이션 생성 시점에 단 하나만 생성하여 전체에서 공유. (비용이 매우 큼)
+- **EntityManager**: 고객의 요청이 올 때마다 생성하고 사용 후 반드시 닫음. **쓰레드 간 절대 공유 금지!**
+
+```java
+public class JpaMain {
+    public static void main(String[] args) {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("hello");
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction tx = em.getTransaction();
+
+        tx.begin(); // 트랜잭션 시작
+
+        try {
+            Member member = new Member();
+            member.setId(1L);
+            member.setName("HelloA");
+
+            em.persist(member); // 영속화
+
+            tx.commit(); // 트랜잭션 커밋
+        } catch (Exception e) {
+            tx.rollback();
+        } finally {
+            em.close(); // 엔티티 매니저 종료
+        }
+
+        emf.close();
+    }
+}
+```
+
+> [!IMPORTANT] JPA의 모든 데이터 변경은 트랜잭션 안에서 실행되어야 한다.
