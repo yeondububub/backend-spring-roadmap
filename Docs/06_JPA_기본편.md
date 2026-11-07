@@ -171,3 +171,59 @@ member.setName("UpdatedName"); // em.update()나 em.persist()를 호출할 필�
   1. `em.flush()` 직접 호출
   2. 트랜잭션 커밋 시 자동 호출
   3. JPQL 쿼리 실행 시 자동 호출
+
+## 4. 엔티티 매핑 (Entity Mapping)
+
+### 4.1 객체-테이블 매핑 (`@Entity`, `@Table`)
+- `@Entity`: JPA가 관리할 클래스임을 지정. 기본 생성자(Public/Protected) 필수!
+- `@Table`: 엔티티와 매핑할 DB 테이블 지정 (생략 시 엔티티 이름 사용).
+
+### 4.2 DDL 자동 생성 옵션 (`hibernate.hbm2ddl.auto`)
+- `create`: 기존 테이블 삭제 후 다시 생성 (DROP + CREATE)
+- `create-drop`: create와 같으나 애플리케이션 종료 시 DROP
+- `update`: 변경분만 반영 (컬럼 추가만 가능, 삭제 불가능)
+- `validate`: 엔티티와 테이블이 정상 매핑되었는지만 검증
+- `none`: 사용하지 않음
+
+> [!WARNING]  
+> **운영 환경에서는 절대로 create, create-drop, update를 사용하면 안 됩니다!** (validate 또는 none 권장)
+
+### 4.3 필드와 컬럼 매핑 애노테이션
+
+- `@Column`: 컬럼명, `nullable`, `unique`, `length` 지정.
+- `@Enumerated`: 자바 enum 타입 매핑. **반드시 `EnumType.STRING` 사용!** (`ORDINAL`은 순서 숫자로 저장되어 버그 유발).
+- `@Temporal`: 날짜 타입 매핑 (`TemporalType.DATE`, `TIME`, `TIMESTAMP`). 자바 8+ `LocalDate`, `LocalDateTime` 사용 시 생략 가능.
+- `@Lob`: 대용량 데이터 (문자 CLOB, 바이너리 BLOB).
+- `@Transient`: DB 매핑에서 제외 (메모리 임시 변수).
+
+```java
+@Entity
+@Table(name = "MEMBERS")
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", nullable = false, length = 100)
+    private String username;
+
+    @Enumerated(EnumType.STRING) // 중요!
+    private RoleType roleType;
+
+    private LocalDateTime createdDate;
+
+    @Lob
+    private String description;
+
+    @Transient
+    private int tempCalculatedValue;
+}
+```
+
+### 4.4 기본 키 매핑 전략
+
+1. **IDENTITY**: 기본 키 생성을 DB에 위임 (MySQL `AUTO_INCREMENT`). `em.persist()` 시점에 즉시 `INSERT` SQL 실행하여 PK 조회.
+2. **SEQUENCE**: DB 시퀀스 오브젝트 사용 (Oracle, H2). `@SequenceGenerator`로 `allocationSize` 설정하여 성능 최적화.
+3. **TABLE**: 키 생성 전용 테이블 사용 (모든 DB 적용 가능하나 성능 불리).
+4. **AUTO**: 방언에 따라 위 3가지 중 자동 선택.
